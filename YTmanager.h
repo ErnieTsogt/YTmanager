@@ -1,0 +1,14 @@
+//
+// Created by Ernie on 05/01/2024.
+//
+
+#ifndef PODSTAWYPROGOBIEKTOWE_YTMANAGER_H
+#define PODSTAWYPROGOBIEKTOWE_YTMANAGER_H
+
+
+class YTmanager {
+
+};
+
+
+#endif //PODSTAWYPROGOBIEKTOWE_YTMANAGER_H
