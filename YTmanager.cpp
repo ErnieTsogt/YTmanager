@@ -116,10 +116,12 @@ class ChannelManager {
 private:
     vector<Channel> channels;
     vector<Channel> foundChannels;
+    vector<Channel> foundChannelsByVid;
     vector<Channel> trash;
     size_t currentChannelIndex=0;
     size_t currentVideoIndex=0;
     size_t currentSearchIndex = 0;
+    size_t currentSearchIndexByVid = 0;
     size_t currentTrashIndex = 0;
 
     const char* password = "tajnehaslo";
@@ -134,6 +136,10 @@ public:
     }
     const vector<Channel>& getFoundChannels() const {
         return foundChannels;
+    }
+
+    const vector<Channel>& getFoundChannelsByVid() const {
+        return foundChannelsByVid;
     }
 
     void addChannel(const char* name) {
@@ -175,6 +181,10 @@ public:
     void nextTrash();
     void previousTrash();
     void displayAllTrash();
+    void displaySearchResultsByVid(const vector<Channel>& channels);
+    void searchChannelsByVid(int max, int min);
+    void nextFoundByVid();
+    void previousFoundByVid();
 };
 
 bool ChannelManager::modifyDataWithPassword(const char* inputPassword) {
@@ -324,6 +334,14 @@ void ChannelManager::displaySearchResults(const vector<Channel>& channels)
     channels[currentSearchIndex].displayInfo();
 }
 
+void ChannelManager::displaySearchResultsByVid(const vector<Channel>& channels)
+{
+    if (channels.empty()) {
+        cout << "Brak wyników wyszukiwania." << endl;
+        return;
+    }
+    channels[currentSearchIndexByVid].displayInfo();
+}
 void ChannelManager::searchChannelsByLetters(const char* lettersToSearch)
 {
     foundChannels.clear();
@@ -331,6 +349,18 @@ void ChannelManager::searchChannelsByLetters(const char* lettersToSearch)
     for (const Channel& channel : channels) {
         if (strstr(channel.getChannelName(), lettersToSearch) != nullptr) {
             foundChannels.push_back(channel);
+        }
+    }
+}
+
+void ChannelManager::searchChannelsByVid(int max, int min)
+{
+    foundChannelsByVid.clear();
+    int ma=max;
+    int mi=min;
+    for (const Channel& channel : channels) {
+        if (channel.getVideos().size() >= mi && channel.getVideos().size() <= ma) {
+            foundChannelsByVid.push_back(channel);
         }
     }
 }
@@ -347,9 +377,11 @@ void ChannelManager::clearAllData() {
     }
     trash.clear();
     foundChannels.clear();
+    foundChannelsByVid.clear();
     currentChannelIndex = 0;
     currentVideoIndex=0;
     currentSearchIndex = 0;
+    currentSearchIndexByVid = 0;
     currentTrashIndex=0;
 }
 
@@ -423,6 +455,18 @@ void ChannelManager::nextFound() {
         cout << "Brak kanałów do przełączenia." << endl;
     }
 }
+void ChannelManager::nextFoundByVid() {
+    if (!foundChannelsByVid.empty()) {
+        if (currentSearchIndexByVid < foundChannelsByVid.size() - 1) {
+            currentSearchIndexByVid++;
+            cout << "Przełączono na następny kanał." << endl;
+        } else {
+            cout << "Jesteś już na ostatnim kanale." << endl;
+        }
+    } else {
+        cout << "Brak kanałów do przełączenia." << endl;
+    }
+}
 
 void ChannelManager::previousChannel() {
     if (!channels.empty()) {
@@ -440,6 +484,18 @@ void ChannelManager::previousFound() {
     if (!foundChannels.empty()) {
         if (currentSearchIndex > 0) {
             currentSearchIndex--;
+            cout << "Przełączono na poprzedni kanał." << endl;
+        } else {
+            cout << "Jesteś już na pierwszym kanale." << endl;
+        }
+    } else {
+        cout << "Brak kanałów do przełączenia." << endl;
+    }
+}
+void ChannelManager::previousFoundByVid() {
+    if (!foundChannelsByVid.empty()) {
+        if (currentSearchIndexByVid > 0) {
+            currentSearchIndexByVid--;
             cout << "Przełączono na poprzedni kanał." << endl;
         } else {
             cout << "Jesteś już na pierwszym kanale." << endl;
@@ -694,7 +750,7 @@ int main() {
     ChannelManager channelManager;
     vector<Channel> allChannels;
     char channelName[20],videoDate[20],videoTitle[20],zn, fileName[15],lettersToSearch[20],choice, inputPassword[20];
-    int videoLikes, videoViews, sortBy, sortOrder;
+    int videoLikes, videoViews, sortBy, sortOrder, min, max;
     bool passwordCorrect=false;
     int maxAttempts = 3;
     int attempt = 0;
@@ -1024,43 +1080,101 @@ int main() {
                 break;
             }
             case '9': {
-                cout << "Podaj litery do wyszukania: ";
-                cin >> lettersToSearch;
+                cout<< "Wyszukiwanie po:\n"
+                       "n. Nazwie kanału\n"
+                       "l. liczbie filmów\n"
+                       "w. Wróć do strony głównej: ";
+                char i;
+                cin>>i;
+                switch (i) {
+                    case 'l':
+                        system("clear");
+                        do {
+                            cout << "Podaj przedział minimalny: " << endl;
+                            cin >> min;
+                            cout << "Podaj przedział maksymalny: " << endl;
+                            cin >> max;
+                            if (min > max) {
+                                cout << "Wartość minimalna nie może być wieksza od wartosci maksymalnej!" << endl;
 
-                channelManager.searchChannelsByLetters(lettersToSearch);
+                            }
+                        }while(min>max);
+                        channelManager.searchChannelsByVid(max,min);
+                        if (channelManager.getFoundChannelsByVid().empty()) {
+                            cout << "Nie znaleziono dopasowanych kanałów" << endl;
+                        } else {
+                            char wybor;
+                            do {
+                                channelManager.displaySearchResultsByVid(channelManager.getFoundChannelsByVid());
+                                cout << " Następny (n)\n Poprzedni (p)\n Wróć do strony głównej (w): ";
+                                cin >> wybor;
 
-                if (channelManager.getFoundChannels().empty()) {
-                    cout << "Nie znaleziono dopasowanych kanałów" << endl;
-                } else {
-                    char choice;
-                    do {
-                        channelManager.displaySearchResults(channelManager.getFoundChannels());
-                        cout << " Następny (n)\n Poprzedni (p)\n Wróć do strony głównej (w): ";
-                        cin >> choice;
-
-                        switch (choice) {
-                            case 'n':
-                                system("clear");
-                                channelManager.nextFound();
-                                fflush(stdin);
-                                break;
-                            case 'p':
-                                system("clear");
-                                channelManager.previousFound();
-                                fflush(stdin);
-                                break;
-                            case 'w':
-                                break;
-                            default:
-                                cout << "Nieprawidłowy wybór. Spróbuj ponownie." << endl;
-                                fflush(stdin);
+                                switch (wybor) {
+                                    case 'n':
+                                        system("clear");
+                                        channelManager.nextFoundByVid();
+                                        fflush(stdin);
+                                        break;
+                                    case 'p':
+                                        system("clear");
+                                        channelManager.previousFoundByVid();
+                                        fflush(stdin);
+                                        break;
+                                    case 'w':
+                                        break;
+                                    default:
+                                        cout << "Nieprawidłowy wybór. Spróbuj ponownie." << endl;
+                                        fflush(stdin);
+                                }
+                            } while (wybor != 'w');
                         }
-                    } while (choice != 'w');
+                        fflush(stdin);
+                        break;
+                    case 'n':
+                        cout << "Podaj litery do wyszukania: ";
+                        cin >> lettersToSearch;
+
+                        channelManager.searchChannelsByLetters(lettersToSearch);
+
+                        if (channelManager.getFoundChannels().empty()) {
+                            cout << "Nie znaleziono dopasowanych kanałów" << endl;
+                        } else {
+                            char choice;
+                            do {
+                                channelManager.displaySearchResults(channelManager.getFoundChannels());
+                                cout << " Następny (n)\n Poprzedni (p)\n Wróć do strony głównej (w): ";
+                                cin >> choice;
+
+                                switch (choice) {
+                                    case 'n':
+                                        system("clear");
+                                        channelManager.nextFound();
+                                        fflush(stdin);
+                                        break;
+                                    case 'p':
+                                        system("clear");
+                                        channelManager.previousFound();
+                                        fflush(stdin);
+                                        break;
+                                    case 'w':
+                                        break;
+                                    default:
+                                        cout << "Nieprawidłowy wybór. Spróbuj ponownie." << endl;
+                                        fflush(stdin);
+                                }
+                            } while (choice != 'w');
+                        }
+                        fflush(stdin);
+                        break;
+                    case 'w':
+                        break;
+                    default:
+                        cout << "Nieprawidłowy wybór. Spróbuj ponownie." << endl;
+                        fflush(stdin);
                 }
+            }
                 fflush(stdin);
                 break;
-            }
-
             case 'q':
             {
                 char confirmation;
